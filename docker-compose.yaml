@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: zeni-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-zeni_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zeni_password}
+      POSTGRES_DB: ${POSTGRES_DB:-zeni_search}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-zeni_user} -d ${POSTGRES_DB:-zeni_search}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - zeni-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zeni-backend
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      - ASPNETCORE_URLS=${ASPNETCORE_URLS:-http://+:5000}
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-zeni_search};Username=${POSTGRES_USER:-zeni_user};Password=${POSTGRES_PASSWORD:-zeni_password}
+    ports:
+      - "${BACKEND_PORT:-5000}:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - zeni-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 40s
+      retries: 3
+
+networks:
+  zeni-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
