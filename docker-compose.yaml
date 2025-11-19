@@ -22,6 +22,28 @@ services:
     networks:
       - zeni-network
 
+  migrations:
+    image: mcr.microsoft.com/dotnet/sdk:9.0
+    container_name: zeni-migrations
+    working_dir: /src
+    volumes:
+      - ./backend:/src
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-zeni_search};Username=${POSTGRES_USER:-zeni_user};Password=${POSTGRES_PASSWORD:-zeni_password}
+    command: >
+      sh -c "
+        dotnet tool install dotnet-ef --global --version 9.0.10 &&
+        export PATH=\"$PATH:/root/.dotnet/tools\" &&
+        dotnet restore &&
+        dotnet ef database update
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - zeni-network
+    restart: "no"
+
   backend:
     build:
       context: ./backend
@@ -34,6 +56,8 @@ services:
     ports:
       - "${BACKEND_PORT:-5000}:5000"
     depends_on:
+      migrations:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
     networks:
