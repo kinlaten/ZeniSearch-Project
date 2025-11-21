@@ -10,15 +10,6 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-zeni_user} -d ${POSTGRES_DB:-zeni_search}",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - zeni-network
 
@@ -62,12 +53,6 @@ services:
         condition: service_healthy
     networks:
       - zeni-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 3s
-      start_period: 40s
-      retries: 3
 
 networks:
   zeni-network:
